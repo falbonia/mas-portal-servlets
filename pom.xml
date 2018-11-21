@@ -11,7 +11,7 @@
 	<url>/mas/mas-portal-servlets</url>
 	<properties>
 		<maven.compiler.source>1.7</maven.compiler.source>
-		<maven.compiler.target>1.6</maven.compiler.target>
+		<maven.compiler.target>1.7</maven.compiler.target>
 		<org.springframework-version>4.0.3.RELEASE</org.springframework-version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -83,13 +83,8 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
-			<artifactId>activemq-broker</artifactId>
-			<version>5.15.7</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.activemq</groupId>
-			<artifactId>activemq-client</artifactId>
-			<version>5.15.7</version>
+			<artifactId>activemq-all</artifactId>
+			<version>5.15.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.collections</groupId>
