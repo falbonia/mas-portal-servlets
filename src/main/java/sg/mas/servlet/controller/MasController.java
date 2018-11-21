@@ -56,7 +56,7 @@ public class MasController implements ServletContextAware {
                 if(checkFile != null && !checkFile.isEmpty()){
 	        		uploadedFileName = checkFile.getOriginalFilename();
 	        		errorFound = false;
-	        	}
+	        	} 
 		   		try {
 		        	// To write the file in disk
             	    logger.debug("Before saving to disk");
