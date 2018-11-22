@@ -45,7 +45,8 @@ public class MasController implements ServletContextAware {
                       
           HttpStatus status = null;
           String uploadFileMessage = "";
-          String UPLOADED_PATH = "/home/virtuser/logs/";
+          //String UPLOADED_PATH = "/home/virtuser/logs/";
+          String UPLOADED_PATH = "D:/logs/";
           
           if (ServletFileUpload.isMultipartContent(request)){
                 logger.debug("IS MULTIPART CONTENT");
