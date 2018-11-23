@@ -229,6 +229,7 @@ public class MasController implements ServletContextAware {
 		httpHeaders.setContentType(MediaType.APPLICATION_XHTML_XML);
 		logger.debug("Exit readFilesFromFolder");
 		System.out.println("Exit readFilesFromFolder");
+		response.setContentType("text/html; charset=utf-8");
 		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
 	}
 	
