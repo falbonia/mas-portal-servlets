@@ -69,6 +69,7 @@ public class IncomingQueue extends AbstractQueue implements MessageListener {
   public void onMessage(final Message message) {
     try {
       LOGGER.info("Message received: " + message.getJMSMessageID());
+      System.out.println("Message received: " + message.getJMSMessageID());
       if (message instanceof BytesMessage) {
         final BytesMessage byteMessage = (BytesMessage) message;
         final int bodyLength = (int) byteMessage.getBodyLength();

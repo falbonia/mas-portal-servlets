@@ -26,7 +26,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.ServletContextAware;
 
+import sg.mas.servlet.activemq.IncomingQueue;
 import sg.mas.servlet.activemq.OutgoingQueue;
+import sg.mas.servlet.activemq.ReceivedMessage;
+import sg.mas.servlet.activemq.TemporaryFileManager;
 import sg.mas.servlet.helper.MasHelper;
 
 @Controller
@@ -44,10 +47,10 @@ public class MasController implements ServletContextAware {
     public ResponseEntity<String> uploadMasFiles(HttpServletRequest request, HttpServletResponse response) throws Exception {
                       
           HttpStatus status = null;
-          String uploadFileMessage = "";
-          //String UPLOADED_PATH = "/home/virtuser/logs/";
-          String UPLOADED_PATH = "D:/logs/";
-          
+          String uploadFileMessage = "Empty Message";
+          String UPLOADED_PATH = "/home/virtuser/logs/outgoing/";
+          //String UPLOADED_PATH = "D:/logs/";
+          logger.debug("Check MULTIPART CONTENT");
           if (ServletFileUpload.isMultipartContent(request)){
                 logger.debug("IS MULTIPART CONTENT");
                 DiskFileItemFactory factory = new DiskFileItemFactory();
@@ -63,7 +66,10 @@ public class MasController implements ServletContextAware {
                 logger.debug("Reading through FileItems");
                 try{
                 for(FileItem item : items){
-                      if(item!=null && !items.isEmpty()){
+                	logger.debug("Check FileItem Size: " + items.size());
+
+                    System.out.println("Read through FileItems");
+                    	if(item!=null && !items.isEmpty()){
                     	    // To write the file in disk
                     	    logger.debug("Before saving to disk");
                             fileInputStream = item.getInputStream();
@@ -71,14 +77,16 @@ public class MasController implements ServletContextAware {
                             fileOutputStream = new FileOutputStream(writeFile);
                             IOUtils.copy(fileInputStream,fileOutputStream);
                             logger.debug("After saving to disk");
+                            System.out.println("After saving to disk");
                             
+                            System.out.println("Before Sending to Queue");
                             logger.debug("Before sending to Queue");                            
                             // To send file to queue
                             OutgoingQueue outQueue = new OutgoingQueue( new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "INCOMING.SUBMISSION");
                     		BytesMessage bytesMessage = outQueue.createNewBytesMessage();
                     		bytesMessage.setStringProperty("submissionID", "20181120185200111111");
                     		bytesMessage.setStringProperty("serviceName", "tier1Validation");
-                    		bytesMessage.setStringProperty("returnQueueName", "jms/masSystemMessageOutgoingQueue");
+                    		bytesMessage.setStringProperty("returnQueueName", "ACCENTURE.OUTGOING.RESPONSE");
                     		bytesMessage.setStringProperty("formName", "Form_A__V1.0");
                     		bytesMessage.setStringProperty("REIdentifier", "");
                     		bytesMessage.setStringProperty("JMSXGroupID", "");
@@ -86,12 +94,15 @@ public class MasController implements ServletContextAware {
                     		bytesMessage.setStringProperty("PeriodEndDate", "");
                     		bytesMessage.setStringProperty("periodCode", "");
                     		bytesMessage.writeBytes(item.get());
+                    		outQueue.sendBytesMessageMessage(bytesMessage);
                     		logger.debug("After sending to the queue");
+                    		
+                    		uploadFileMessage = "Successfully Uploaded";
                       }
                 }
                 } catch (Exception e){
                 	logger.error(e);
-                	e.printStackTrace();
+                	uploadFileMessage = e.getMessage();
                 }
                 
                 if(items!=null && items.isEmpty()){
@@ -117,7 +128,7 @@ public class MasController implements ServletContextAware {
 		
 		OutgoingQueue outQueue = new OutgoingQueue( new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "INCOMING.SUBMISSION");
 		BytesMessage bytesMessage = outQueue.createNewBytesMessage();
-		bytesMessage.setStringProperty("submissionID", "20181120185200111111");
+		bytesMessage.setStringProperty("submissionID", "1");
 		bytesMessage.setStringProperty("serviceName", "tier1Validation");
 		bytesMessage.setStringProperty("returnQueueName", "jms/masSystemMessageOutgoingQueue");
 		bytesMessage.setStringProperty("formName", "Form_A__V1.0");
@@ -134,6 +145,41 @@ public class MasController implements ServletContextAware {
 		return new ResponseEntity<String>("success", httpHeaders, HttpStatus.OK);
 	}
 
+	@RequestMapping(value="/listenQueue",method = RequestMethod.GET, produces = "application/json")
+	public ResponseEntity<String> getCoreFilingStatus(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		System.out.println("Inside listenQueue get call");
+		try{		
+			logger.debug("Inside listenQueue get call");
+			System.out.println("Retrieving parameters....");
+			String getParameter = request.getParameter("id");
+			System.out.println(request.getParameter("id"));
+			Integer id = Integer.parseInt(request.getParameter("id")); 
+			System.out.println("Integer has been parsed");
+			TemporaryFileManager fileManager = new TemporaryFileManager();
+			logger.debug("Establishing MessageConsumer to retrieve information");
+			System.out.println("Establishing MessageConsumer to retrieve information");
+			IncomingQueue inQueue = new IncomingQueue(id, new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "ACCENTURE.OUTGOING.RESPONSE", fileManager);
+			System.out.println("MessageConsumer is created and listening");
+			logger.debug("MessageConsumer is created and listening");
+					
+			if (inQueue.hasReceivedMessage(id)){
+				System.out.println("This Message ID: " + id + " has been received");
+				logger.debug("This Message ID: " + id + " has been received");
+				ReceivedMessage receive = inQueue.getReceivedMessage(id);
+				// Do something with the ReceivedMessage to check or update
+			}
+		}catch(Exception e){
+			logger.error("Error while getting message: " + e.getMessage());
+			System.out.println("Error while getting message: " + e.getMessage());
+			e.printStackTrace();
+		}
+		final HttpHeaders httpHeaders= new HttpHeaders();
+		httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+		logger.debug("Exit listenQueue");
+		System.out.println("Exit listenQueue");
+		return new ResponseEntity<String>("success", httpHeaders, HttpStatus.OK);
+	}
+	
 	@Override
 	public void setServletContext(ServletContext servletContext) {
 		// TODO Auto-generated method stub
@@ -144,66 +190,3 @@ public class MasController implements ServletContextAware {
 	
 	
 }
-
-/*@RequestMapping(value="/uploadfiles",method = RequestMethod.POST, produces = "application/json")
-public ResponseEntity<String> uploadMasFiles(HttpServletRequest request, HttpServletResponse response) throws Exception {
-
-HttpStatus status = null;
-String uploadFileMessage = "";
-String UPLOADED_PATH = "/home/virtuser/logs/";
-boolean errorFound = true;
-String uploadedFileName = "";
-byte[] bytes;
-// Parse the request
-if (ServletFileUpload.isMultipartContent(request)){
-      logger.debug("IS MULTIPART CONTENT");
-      
-      MultipartHttpServletRequest multiRequest = (MultipartHttpServletRequest) request;
-      String fileName = (String) multiRequest.getFileNames().next();
-      MultipartFile checkFile = multiRequest.getFile(fileName);
-      if(checkFile != null && !checkFile.isEmpty()){
-  		uploadedFileName = checkFile.getOriginalFilename();
-  		errorFound = false;
-  	}
- 		try {
-      	// To write the file in disk
-  	    logger.debug("Before saving to disk");
- 			bytes = checkFile.getBytes();
-          Path path = Paths.get(UPLOADED_PATH + checkFile.getOriginalFilename());
-          Files.write(path, bytes);
-          logger.debug("After saving to disk");
-          
-          logger.debug("Before sending to Queue");                            
-          // To send file to queue
-          OutgoingQueue outQueue = new OutgoingQueue( new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "INCOMING.SUBMISSION");
-  		BytesMessage bytesMessage = outQueue.createNewBytesMessage();
-  		bytesMessage.setStringProperty("submissionID", "20181120185200111111");
-  		bytesMessage.setStringProperty("serviceName", "tier1Validation");
-  		bytesMessage.setStringProperty("returnQueueName", "jms/masSystemMessageOutgoingQueue");
-  		bytesMessage.setStringProperty("formName", "Form_A__V1.0");
-  		bytesMessage.setStringProperty("REIdentifier", "");
-  		bytesMessage.setStringProperty("JMSXGroupID", "");
-  		bytesMessage.setStringProperty("PeriodStartDate", "");
-  		bytesMessage.setStringProperty("PeriodEndDate", "");
-  		bytesMessage.setStringProperty("periodCode", "");
-  		bytesMessage.writeBytes(bytes);
-  		outQueue.sendBytesMessageMessage(bytesMessage);
-  		logger.debug("After sending to the queue");
-          
-      } catch (Exception e) {
-          errorFound = true;
-      }
-      
-      if(errorFound){
-            status = HttpStatus.BAD_REQUEST;
-      }else{
-            status = HttpStatus.OK;
-      }                 
-}          
-
-final HttpHeaders httpHeaders= new HttpHeaders();
-httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-return new ResponseEntity<String>(uploadFileMessage, httpHeaders, status);
-}
-*/

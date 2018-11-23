@@ -33,7 +33,7 @@ public class TemporaryFileManager {
   private static final Logger LOGGER = Logger.getLogger(TemporaryFileManager.class);
 
   public TemporaryFileManager() throws IOException {
-    _tempDirectory = Files.createTempDirectory("jmsreplies");
+    _tempDirectory = Files.createTempDirectory("/home/virtuser/logs/incoming/");
   }
 
   public TemporaryFile storeFile(final byte[] bytes) throws IOException {
