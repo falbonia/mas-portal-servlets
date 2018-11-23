@@ -183,8 +183,10 @@ public class MasController implements ServletContextAware {
 	}
 	
 	
-	@RequestMapping(value="/readFilesFromFolder",method = RequestMethod.GET)
-	public String readFilesFromFolder(HttpServletRequest request, HttpServletResponse response) throws Exception {
+	@RequestMapping(value="/readFilesFromFolder",method = RequestMethod.GET, produces = "application/json")
+	public ResponseEntity<String> readFilesFromFolder(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		logger.debug("Enter readFilesFromFolder");
+		System.out.println("Enter readFilesFromFolder");
 		StringBuilder fileListStr = new StringBuilder();
 		if(request.getParameter("filePath")!=null && !request.getParameter("filePath").isEmpty()) {
 			String filePath = request.getParameter("filePath");
@@ -219,9 +221,12 @@ public class MasController implements ServletContextAware {
 			fileListStr.append("Folder is empty");
 		}
 		System.out.println("fileListStr:: "+fileListStr.toString());	
-		response.setHeader("Access-Control-Allow-Origin", "*");
-		response.setStatus(200);
-		return fileListStr.toString();
+		logger.debug("fileListStr:: "+fileListStr.toString());
+		final HttpHeaders httpHeaders= new HttpHeaders();
+		httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+		logger.debug("Exit readFilesFromFolder");
+		System.out.println("Exit readFilesFromFolder");
+		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
 	}
 	
 	@Override
