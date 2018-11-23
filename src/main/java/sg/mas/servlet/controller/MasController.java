@@ -205,7 +205,7 @@ public class MasController implements ServletContextAware {
 			    	strBldr.append("<td>");
 			    	strBldr.append(fileCnt);
 			    	strBldr.append("</td>");
-			    	strBldr.append("<td colspan=\"2\">");
+			    	strBldr.append("<td colspan='2'>");
 			    	strBldr.append("<a href='"+ file.getAbsolutePath() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	strBldr.append("</td>");
 			    	strBldr.append("<td>");			    	
@@ -213,9 +213,16 @@ public class MasController implements ServletContextAware {
 		    		Date lastModifiedDate=new Date(file.lastModified());			    		
 					strBldr.append(format.format(lastModifiedDate));
 			    	strBldr.append("</td>");
-			    	strBldr.append("<td class=\"submitted\">");
-			    	strBldr.append("Submitted");
-			    	strBldr.append("</td>");
+			    	if(filePath.indexOf("incoming")<0) {
+			    		strBldr.append("<td class='submitted'>");
+				    	strBldr.append("Submitted");
+				    	strBldr.append("</td>");
+			    	}else{
+			    		strBldr.append("<td class='confirmed'>");
+				    	strBldr.append("Confirmed");
+				    	strBldr.append("</td>");
+			    	}
+			    	
 			    	strBldr.append("</tr>");
 			        fileListStr.append(strBldr.toString());
 			    }
@@ -226,7 +233,6 @@ public class MasController implements ServletContextAware {
 		System.out.println("fileListStr:: "+fileListStr.toString());	
 		logger.debug("fileListStr:: "+fileListStr.toString());
 		final HttpHeaders httpHeaders= new HttpHeaders();
-		httpHeaders.setContentType(MediaType.APPLICATION_XHTML_XML);
 		logger.debug("Exit readFilesFromFolder");
 		System.out.println("Exit readFilesFromFolder");
 		response.setContentType("text/html; charset=utf-8");
