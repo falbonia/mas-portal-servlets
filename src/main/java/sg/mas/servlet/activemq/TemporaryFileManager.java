@@ -3,6 +3,7 @@ package sg.mas.servlet.activemq;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DateFormat;
@@ -33,7 +34,7 @@ public class TemporaryFileManager {
   private static final Logger LOGGER = Logger.getLogger(TemporaryFileManager.class);
 
   public TemporaryFileManager() throws IOException {
-    _tempDirectory = Files.createTempDirectory("/home/virtuser/logs/incoming/");
+    _tempDirectory = FileSystems.getDefault().getPath("/home/virtuser/logs/incoming/");
   }
 
   public TemporaryFile storeFile(final byte[] bytes) throws IOException {

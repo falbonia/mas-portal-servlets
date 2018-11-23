@@ -84,17 +84,20 @@ public class MasController implements ServletContextAware {
                             System.out.println("Before Sending to Queue");
                             logger.debug("Before sending to Queue");                            
                             // To send file to queue
+                            String submissionID = getCurrentTimeStamp();
+                            String startDate = getStartDate();
+                            String endDate = getEndDate();
                             OutgoingQueue outQueue = new OutgoingQueue( new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "INCOMING.SUBMISSION");
                     		BytesMessage bytesMessage = outQueue.createNewBytesMessage();
-                    		bytesMessage.setStringProperty("submissionID", "20181120185200111111");
+                    		bytesMessage.setStringProperty("submissionID", submissionID);
                     		bytesMessage.setStringProperty("serviceName", "tier1Validation");
                     		bytesMessage.setStringProperty("returnQueueName", "ACCENTURE.OUTGOING.RESPONSE");
-                    		bytesMessage.setStringProperty("formName", "Form_A__V1.0");
-                    		bytesMessage.setStringProperty("REIdentifier", "");
-                    		bytesMessage.setStringProperty("JMSXGroupID", "");
-                    		bytesMessage.setStringProperty("PeriodStartDate", "");
-                    		bytesMessage.setStringProperty("PeriodEndDate", "");
-                    		bytesMessage.setStringProperty("periodCode", "");
+                    		bytesMessage.setStringProperty("formName", item.getName());
+                    		bytesMessage.setStringProperty("REIdentifier", "AccentureDemo");
+                    		bytesMessage.setStringProperty("JMSXGroupID", "AccentureDemo");
+                    		bytesMessage.setStringProperty("PeriodStartDate", startDate);
+                    		bytesMessage.setStringProperty("PeriodEndDate", endDate);
+                    		bytesMessage.setStringProperty("periodCode", "2018");
                     		bytesMessage.writeBytes(item.get());
                     		outQueue.sendBytesMessageMessage(bytesMessage);
                     		logger.debug("After sending to the queue");
@@ -234,7 +237,28 @@ public class MasController implements ServletContextAware {
 		// TODO Auto-generated method stub
 		
 	}
-
+	
+	public static String getCurrentTimeStamp() {
+	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//dd/MM/yyyy
+	    Date now = new Date();
+	    String strDate = sdfDate.format(now);
+	    return strDate;
+	}
+	
+	public static String getStartDate() {
+	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");//dd/MM/yyyy
+	    Date now = new Date();
+	    String strDate = sdfDate.format(now);
+	    return strDate;
+	}
+	
+	public static String getEndDate() {
+	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");//dd/MM/yyyy
+	    Date now = new Date();
+	    String strDate = sdfDate.format(now);
+	    return strDate;
+	}
+	
 	
 	
 	
