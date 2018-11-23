@@ -186,7 +186,7 @@ public class MasController implements ServletContextAware {
 	}
 	
 	
-	@RequestMapping(value="/readFilesFromFolder",method = RequestMethod.GET, produces = "application/json")
+	@RequestMapping(value="/readFilesFromFolder",method = RequestMethod.GET, produces = "application/xhtml+xml")
 	public ResponseEntity<String> readFilesFromFolder(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		logger.debug("Enter readFilesFromFolder");
 		System.out.println("Enter readFilesFromFolder");
@@ -226,7 +226,7 @@ public class MasController implements ServletContextAware {
 		System.out.println("fileListStr:: "+fileListStr.toString());	
 		logger.debug("fileListStr:: "+fileListStr.toString());
 		final HttpHeaders httpHeaders= new HttpHeaders();
-		httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+		httpHeaders.setContentType(MediaType.APPLICATION_XHTML_XML);
 		logger.debug("Exit readFilesFromFolder");
 		System.out.println("Exit readFilesFromFolder");
 		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
