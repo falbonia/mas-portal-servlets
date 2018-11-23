@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import javax.jms.BytesMessage;
@@ -178,6 +180,48 @@ public class MasController implements ServletContextAware {
 		logger.debug("Exit listenQueue");
 		System.out.println("Exit listenQueue");
 		return new ResponseEntity<String>("success", httpHeaders, HttpStatus.OK);
+	}
+	
+	
+	@RequestMapping(value="/readFilesFromFolder",method = RequestMethod.GET)
+	public String readFilesFromFolder(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		StringBuilder fileListStr = new StringBuilder();
+		if(request.getParameter("filePath")!=null && !request.getParameter("filePath").isEmpty()) {
+			String filePath = request.getParameter("filePath");
+			
+			File folder = new File(filePath);
+			File[] listOfFiles = folder.listFiles();
+			int fileCnt = 0;
+			for (File file : listOfFiles) {
+			    if (file.isFile()) {
+			    	fileCnt++;
+			    	StringBuilder strBldr = new StringBuilder();
+			    	strBldr.append("<tr>");
+			    	strBldr.append("<td>");
+			    	strBldr.append(fileCnt);
+			    	strBldr.append("</td>");
+			    	strBldr.append("<td colspan=\"2\">");
+			    	strBldr.append("<a href='"+ file.getAbsolutePath() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
+			    	strBldr.append("</td>");
+			    	strBldr.append("<td>");			    	
+			    	SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");			    	
+		    		Date lastModifiedDate=new Date(file.lastModified());			    		
+					strBldr.append(format.format(lastModifiedDate));
+			    	strBldr.append("</td>");
+			    	strBldr.append("<td class=\"submitted\">");
+			    	strBldr.append("Submitted");
+			    	strBldr.append("</td>");
+			    	strBldr.append("</tr>");
+			        fileListStr.append(strBldr.toString());
+			    }
+			}
+		}else {
+			fileListStr.append("Folder is empty");
+		}
+		System.out.println("fileListStr:: "+fileListStr.toString());	
+		response.setHeader("Access-Control-Allow-Origin", "*");
+		response.setStatus(200);
+		return fileListStr.toString();
 	}
 	
 	@Override
