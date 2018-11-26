@@ -1,8 +1,11 @@
 package sg.mas.servlet.controller;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -24,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.ServletContextAware;
@@ -237,6 +241,63 @@ public class MasController implements ServletContextAware {
 		System.out.println("Exit readFilesFromFolder");
 		response.setContentType("text/html; charset=utf-8");
 		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
+	}
+	
+	@RequestMapping(value = "/files/{file_name:.+}", method = RequestMethod.GET)
+	public void getFileDownload(@PathVariable("file_name") String fileName, HttpServletResponse response) {
+		// reads input file from an absolute path
+		
+		logger.debug("MasController.getFileDownload start");
+		logger.debug("fileName: " + fileName);
+		
+		String filePath = fileName;
+		File downloadFile = new File(filePath);
+		OutputStream outStream = null;
+		FileInputStream inStream = null;
+		
+		try {
+			inStream = new FileInputStream(downloadFile);
+			
+			// if you want to use a relative path to context root:
+			String relativePath = context.getRealPath("");
+			logger.debug("relativePath = " + relativePath);
+			
+			// gets MIME type of the file
+			String mimeType = context.getMimeType(filePath);
+			if (mimeType == null) {			
+				// set to binary type if MIME mapping not found
+				mimeType = "application/octet-stream";
+			}
+			logger.debug("MIME type: " + mimeType);
+			
+			// modifies response
+			response.setContentType(mimeType);
+			response.setContentLength((int) downloadFile.length());
+			
+			// forces download
+			String headerKey = "Content-Disposition";
+			String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
+			response.setHeader(headerKey, headerValue);
+
+			// obtains response's output stream
+			outStream = response.getOutputStream();
+			
+			IOUtils.copy(inStream,outStream);	
+			logger.debug("MasController.getFileDownload end");
+		} catch (IOException e) {
+			logger.error("exception in getFile:: " +e.getMessage());
+		}
+		finally {
+			try {
+				if (inStream != null) {
+					inStream.close();	
+				}
+				if (outStream != null) {
+					outStream.close();	
+				}		
+			} catch (IOException e) {
+			}
+		}
 	}
 	
 	@Override
