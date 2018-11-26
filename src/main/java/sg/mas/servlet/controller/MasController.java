@@ -35,6 +35,7 @@ import org.springframework.web.context.ServletContextAware;
 import sg.mas.servlet.activemq.IncomingQueue;
 import sg.mas.servlet.activemq.OutgoingQueue;
 import sg.mas.servlet.activemq.ReceivedMessage;
+import sg.mas.servlet.activemq.TemporaryFile;
 import sg.mas.servlet.activemq.TemporaryFileManager;
 import sg.mas.servlet.helper.MasHelper;
 
@@ -175,6 +176,9 @@ public class MasController implements ServletContextAware {
 				System.out.println("This Message ID: " + id + " has been received");
 				logger.debug("This Message ID: " + id + " has been received");
 				ReceivedMessage receive = inQueue.getReceivedMessage(id);
+				TemporaryFile receivedFile = receive.getFile();
+				System.out.println("Received File Name: " + receivedFile.getFilename());
+				
 				// Do something with the ReceivedMessage to check or update
 			}
 		}catch(Exception e){
@@ -210,7 +214,7 @@ public class MasController implements ServletContextAware {
 			    	strBldr.append(fileCnt);
 			    	strBldr.append("</td>");
 			    	strBldr.append("<td colspan='2'>");
-			    	strBldr.append("<a href='"+ "/mas/mas-servlets/files/"+file.getAbsolutePath() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
+			    	strBldr.append("<a href='"+ "/mas/mas-portal-servlets/files/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	strBldr.append("</td>");
 			    	strBldr.append("<td>");			    	
 			    	SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");			    	

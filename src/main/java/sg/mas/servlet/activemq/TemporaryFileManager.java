@@ -44,12 +44,25 @@ public class TemporaryFileManager {
     }
     // Store File
     String filename = _dateFormat.format(new Date()) + ".zip";
-    Path tempFile = Files.createTempFile(_tempDirectory.toAbsolutePath(), "reply", count.toString());
+    String name = _tempDirectory.toString() + "response" + filename;
+   // Path tempFile = Files.createTempFile(_tempDirectory.toAbsolutePath(), "reply", count.toString() + ".zip");
+    System.out.println(name);
+    Path tempFile = Files.createTempFile(_tempDirectory.toAbsolutePath(), "reply", filename);
+    try (FileOutputStream fos = new FileOutputStream(name)) {
+     	System.out.println("Path Defined is for fos : " + name);
+        fos.write(bytes, 0, bytes.length);
+    	fos.flush();
+        LOGGER.info("Message downloaded to " + tempFile.toString());
+        System.out.println("Message downloaded to " + tempFile.toString());
+        
+      }
     try (OutputStream os = new FileOutputStream(tempFile.toFile())) {
+    	System.out.println("Path Defined is : " + tempFile.toString());
       os.write(bytes, 0, bytes.length);
       os.flush();
       LOGGER.info("Message downloaded to " + tempFile.toString());
     }
+    
     TemporaryFile temporaryFile = new TemporaryFile(tempFile.toFile(), filename);
     _files.put(count, temporaryFile);
     return temporaryFile;

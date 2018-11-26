@@ -1,7 +1,9 @@
 package sg.mas.servlet.activemq;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.FileSystems;
 import java.util.Map;
 import java.util.Set;
 
@@ -70,13 +72,24 @@ public class IncomingQueue extends AbstractQueue implements MessageListener {
     try {
       LOGGER.info("Message received: " + message.getJMSMessageID());
       System.out.println("Message received: " + message.getJMSMessageID());
+     // byte[] getBytes = ((Object) message).getBody(byte[].class);
       if (message instanceof BytesMessage) {
-        final BytesMessage byteMessage = (BytesMessage) message;
-        final int bodyLength = (int) byteMessage.getBodyLength();
+    	System.out.println("This is an instance of Byte Message");
+    	//byte[] bytes = message.getBody(byte[].class);
+    	final BytesMessage byteMessage = (BytesMessage) message;
+    	System.out.println("This is a Byte Message");
+    	try {
+    	final int bodyLength = (int) byteMessage.getBodyLength();
         final byte[] byteArray = new byte[bodyLength];
         byteMessage.readBytes(byteArray);
-        try {
+       
           final TemporaryFile temporaryFile = _fileManager.storeFile(byteArray);
+          //Writing to the direction two times.
+          String name = FileSystems.getDefault().getPath("/home/virtuser/logs/incoming/").toString();
+          name = name + temporaryFile.getFilename() + "response.zip";
+          FileOutputStream fileOS = new FileOutputStream(name);
+          fileOS.write(byteArray);
+          
           Integer count = null;
           synchronized (_count) {
             count = ++_count;
@@ -88,15 +101,20 @@ public class IncomingQueue extends AbstractQueue implements MessageListener {
         }
         catch (IOException e) {
           LOGGER.error("An IOException occured", e);
+          System.out.println(e.getMessage());
           _session.rollback();
         }
       }
       else {
         LOGGER.info("Current ignoring non BytesMessage JMS messages");
+        System.out.println("Current ignoring non BytesMessage JMS messages");
+        
       }
     }
     catch (JMSException e) {
       LOGGER.error("JMS Exception occured, rolling back", e);
+
+      System.out.println("JMS Exception occured, rolling back" + e.getMessage());
       try {
         _session.rollback();
       }
