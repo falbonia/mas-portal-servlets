@@ -89,7 +89,7 @@ public class MasController implements ServletContextAware {
                             System.out.println("Before Sending to Queue");
                             logger.debug("Before sending to Queue");                            
                             // To send file to queue
-                            String submissionID = getCurrentTimeStamp();
+                            String submissionID = getCurrentTimeStamp() + "000001";
                             String startDate = getStartDate();
                             String endDate = getEndDate();
                             OutgoingQueue outQueue = new OutgoingQueue( new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "INCOMING.SUBMISSION");
@@ -214,7 +214,12 @@ public class MasController implements ServletContextAware {
 			    	strBldr.append(fileCnt);
 			    	strBldr.append("</td>");
 			    	strBldr.append("<td colspan='2'>");
-			    	strBldr.append("<a href='"+ "/mas/mas-portal-servlets/files/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
+			    	if(filePath.indexOf("incoming")<0) {
+			    		strBldr.append("<a href='"+ "/mas/mas-portal-servlets/outfiles/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
+			    	} else{
+			    	   	strBldr.append("<a href='"+ "/mas/mas-portal-servlets/infiles/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");   		
+			    	}
+			    	//strBldr.append("<a href='"+ "/mas/mas-portal-servlets/files/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	strBldr.append("</td>");
 			    	strBldr.append("<td>");			    	
 			    	SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");			    	
@@ -247,24 +252,33 @@ public class MasController implements ServletContextAware {
 		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
 	}
 	
-	@RequestMapping(value = "/files/{file_name:.+}", method = RequestMethod.GET)
+	@RequestMapping(value = "/outfiles/{file_name:.+}", method = RequestMethod.GET)
 	public void getFileDownload(@PathVariable("file_name") String fileName, HttpServletResponse response) {
 		// reads input file from an absolute path
 		
 		logger.debug("MasController.getFileDownload start");
 		logger.debug("fileName: " + fileName);
+		System.out.println("MasController.getFileDownload start");
+		System.out.println("fileName: " + fileName);
 		
-		String filePath = fileName;
+		String filePath = "/home/virtuser/logs/outgoing/" + fileName;
+		//String filePath = fileName;
+		
+		System.out.println("filePath: " + filePath);
 		File downloadFile = new File(filePath);
 		OutputStream outStream = null;
 		FileInputStream inStream = null;
+		System.out.println("going to try");
 		
 		try {
+			
 			inStream = new FileInputStream(downloadFile);
+			System.out.println("in Try");
 			
 			// if you want to use a relative path to context root:
 			String relativePath = context.getRealPath("");
 			logger.debug("relativePath = " + relativePath);
+			System.out.println("relativePath = " + relativePath);
 			
 			// gets MIME type of the file
 			String mimeType = context.getMimeType(filePath);
@@ -273,6 +287,7 @@ public class MasController implements ServletContextAware {
 				mimeType = "application/octet-stream";
 			}
 			logger.debug("MIME type: " + mimeType);
+			System.out.println("MIME type: " + mimeType);
 			
 			// modifies response
 			response.setContentType(mimeType);
@@ -288,8 +303,79 @@ public class MasController implements ServletContextAware {
 			
 			IOUtils.copy(inStream,outStream);	
 			logger.debug("MasController.getFileDownload end");
+			System.out.println("MasController.getFileDownload end");
 		} catch (IOException e) {
 			logger.error("exception in getFile:: " +e.getMessage());
+			System.out.println(e.getMessage());
+		}
+		finally {
+			try {
+				if (inStream != null) {
+					inStream.close();	
+				}
+				if (outStream != null) {
+					outStream.close();	
+				}		
+			} catch (IOException e) {
+			}
+		}
+	}
+	
+	@RequestMapping(value = "/infiles/{file_name:.+}", method = RequestMethod.GET)
+	public void getFileInDownload(@PathVariable("file_name") String fileName, HttpServletResponse response) {
+		// reads input file from an absolute path
+		
+		logger.debug("MasController.getFileDownload start");
+		logger.debug("fileName: " + fileName);
+		System.out.println("MasController.getFileDownload start");
+		System.out.println("fileName: " + fileName);
+		
+		String filePath = "/home/virtuser/logs/incoming/" + fileName;
+		//String filePath = fileName;
+		
+		System.out.println("filePath: " + filePath);
+		File downloadFile = new File(filePath);
+		OutputStream outStream = null;
+		FileInputStream inStream = null;
+		System.out.println("going to try");
+		
+		try {
+			
+			inStream = new FileInputStream(downloadFile);
+			System.out.println("in Try");
+			
+			// if you want to use a relative path to context root:
+			String relativePath = context.getRealPath("");
+			logger.debug("relativePath = " + relativePath);
+			System.out.println("relativePath = " + relativePath);
+			
+			// gets MIME type of the file
+			String mimeType = context.getMimeType(filePath);
+			if (mimeType == null) {			
+				// set to binary type if MIME mapping not found
+				mimeType = "application/octet-stream";
+			}
+			logger.debug("MIME type: " + mimeType);
+			System.out.println("MIME type: " + mimeType);
+			
+			// modifies response
+			response.setContentType(mimeType);
+			response.setContentLength((int) downloadFile.length());
+			
+			// forces download
+			String headerKey = "Content-Disposition";
+			String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
+			response.setHeader(headerKey, headerValue);
+
+			// obtains response's output stream
+			outStream = response.getOutputStream();
+			
+			IOUtils.copy(inStream,outStream);	
+			logger.debug("MasController.getFileDownload end");
+			System.out.println("MasController.getFileDownload end");
+		} catch (IOException e) {
+			logger.error("exception in getFile:: " +e.getMessage());
+			System.out.println(e.getMessage());
 		}
 		finally {
 			try {
@@ -311,7 +397,7 @@ public class MasController implements ServletContextAware {
 	}
 	
 	public static String getCurrentTimeStamp() {
-	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//dd/MM/yyyy
+	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyyMMddHHmmss");//dd/MM/yyyy
 	    Date now = new Date();
 	    String strDate = sdfDate.format(now);
 	    return strDate;
