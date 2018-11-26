@@ -210,7 +210,7 @@ public class MasController implements ServletContextAware {
 			    	strBldr.append(fileCnt);
 			    	strBldr.append("</td>");
 			    	strBldr.append("<td colspan='2'>");
-			    	strBldr.append("<a href='"+ file.getAbsolutePath() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
+			    	strBldr.append("<a href='"+ "/mas/mas-servlets/files/"+file.getAbsolutePath() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	strBldr.append("</td>");
 			    	strBldr.append("<td>");			    	
 			    	SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");			    	
