@@ -8,13 +8,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import javax.jms.BytesMessage;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Unmarshaller;
 
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -38,6 +44,8 @@ import sg.mas.servlet.activemq.ReceivedMessage;
 import sg.mas.servlet.activemq.TemporaryFile;
 import sg.mas.servlet.activemq.TemporaryFileManager;
 import sg.mas.servlet.helper.MasHelper;
+import sg.mas.servlet.helper.ValidationResults;
+import sg.mas.servlet.helper.ValidationMessage;
 
 @Controller
 public class MasController implements ServletContextAware {
@@ -92,17 +100,18 @@ public class MasController implements ServletContextAware {
                             String submissionID = getCurrentTimeStamp() + "000001";
                             String startDate = getStartDate();
                             String endDate = getEndDate();
+                            String getFormName = item.getName().substring(0, item.getName().lastIndexOf("."));
                             OutgoingQueue outQueue = new OutgoingQueue( new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "INCOMING.SUBMISSION");
                     		BytesMessage bytesMessage = outQueue.createNewBytesMessage();
                     		bytesMessage.setStringProperty("submissionID", submissionID);
                     		bytesMessage.setStringProperty("serviceName", "tier1Validation");
                     		bytesMessage.setStringProperty("returnQueueName", "ACCENTURE.OUTGOING.RESPONSE");
-                    		bytesMessage.setStringProperty("formName", item.getName());
-                    		bytesMessage.setStringProperty("REIdentifier", "AccentureDemo");
+                    		bytesMessage.setStringProperty("formName", getFormName); //Form1 or Form2 (without extension)
+                    		bytesMessage.setStringProperty("REIdentifier", "AccentureDemo"); // this is the user, e.g. HSBC
                     		bytesMessage.setStringProperty("JMSXGroupID", "AccentureDemo");
                     		bytesMessage.setStringProperty("PeriodStartDate", startDate);
                     		bytesMessage.setStringProperty("PeriodEndDate", endDate);
-                    		bytesMessage.setStringProperty("periodCode", "2018");
+                    		bytesMessage.setStringProperty("periodCode", "2018M11"); // For jan, it will be 2018M1
                     		bytesMessage.writeBytes(item.get());
                     		outQueue.sendBytesMessageMessage(bytesMessage);
                     		logger.debug("After sending to the queue");
@@ -217,16 +226,50 @@ public class MasController implements ServletContextAware {
 			    	if(filePath.indexOf("incoming")<0) {
 			    		strBldr.append("<a href='"+ "/mas/mas-portal-servlets/outfiles/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	} else{
-			    	   	strBldr.append("<a href='"+ "/mas/mas-portal-servlets/infiles/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");   		
-			    	}
+			    	   	strBldr.append("<a href='"+ "/mas/mas-portal-servlets/infiles/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
+			    	}		
 			    	//strBldr.append("<a href='"+ "/mas/mas-portal-servlets/files/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	strBldr.append("</td>");
+			    	String getFormName = file.getName().substring(0, file.getName().lastIndexOf("."));
+			        File dir = new File("/home/virtuser/logs/htmlfiles/" + getFormName + "/results/TNValidationResult/" );
+			    	File[] directoryListing = dir.listFiles();
+			    	System.out.println("Before looping Through");
+			    	
+			    	boolean isApproved = true;
+			    	if (directoryListing != null){
+			    		System.out.println("Found Directory!");
+				    	for(File childFile : directoryListing){
+			    			if(childFile.getName().contains(".xml")){
+					    		System.out.println("Found XML!!");
+					    		// ERROR OCCURS AT THIS PORTION.
+				    	   		JAXBContext jaxbContext = JAXBContext.newInstance(ValidationResults.class);
+				    	        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+				    	        ValidationResults validationResults = (ValidationResults) unmarshaller.unmarshal(file);
+				    	        List<ValidationMessage> validationMessages = validationResults.getValidationMessages();
+				    	        
+				    	        for (ValidationMessage validMessage : validationMessages){
+				    	        	if (validMessage.getSeverity() != "OK"){
+				    	        		isApproved = false;
+				    	        	}
+				    	        	System.out.println("messageDetail: " + validMessage.getMessageDetail());
+				    	        	System.out.println("errorCode: " + validMessage.getErrorCode());
+				    	        	String[] messageCauses = validMessage.getMessageCauses();
+				    	        	for (String messageCause : messageCauses){
+				    	        		System.out.println("messageCause: " + messageCause);
+				    	        	}		    	        	
+				    	        }
+				    	        //TODO parse XML - reads xml and gives out the HTML
+				    	   	}
+			    		}
+			    	}
+			    	
+			    	
 			    	strBldr.append("<td>");			    	
 			    	SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");			    	
 		    		Date lastModifiedDate=new Date(file.lastModified());			    		
 					strBldr.append(format.format(lastModifiedDate));
 			    	strBldr.append("</td>");
-			    	if(filePath.indexOf("incoming")<0) {
+			    	/*if(filePath.indexOf("incoming")<0) {
 			    		strBldr.append("<td class='submitted'>");
 				    	strBldr.append("Submitted");
 				    	strBldr.append("</td>");
@@ -234,6 +277,15 @@ public class MasController implements ServletContextAware {
 			    		strBldr.append("<td class='confirmed'>");
 				    	strBldr.append("Confirmed");
 				    	strBldr.append("</td>");
+			    	}*/
+			    	if(isApproved) {
+			    		strBldr.append("<td class='submitted'>");
+				    	strBldr.append("Approved");
+				    	strBldr.append("</td>");
+			    	}else{
+			    		strBldr.append("<td><font color='#ff004e'>");
+				    	strBldr.append("Error");
+				    	strBldr.append("</font></td>");
 			    	}
 			    	
 			    	strBldr.append("</tr>");
@@ -243,7 +295,7 @@ public class MasController implements ServletContextAware {
 		}else {
 			fileListStr.append("Folder is empty");
 		}
-		System.out.println("fileListStr:: "+fileListStr.toString());	
+		//System.out.println("fileListStr:: "+fileListStr.toString());	
 		logger.debug("fileListStr:: "+fileListStr.toString());
 		final HttpHeaders httpHeaders= new HttpHeaders();
 		logger.debug("Exit readFilesFromFolder");
@@ -390,6 +442,128 @@ public class MasController implements ServletContextAware {
 		}
 	}
 	
+	@RequestMapping(value="/readSuccessResponse",method = RequestMethod.GET, produces = "application/xhtml+xml")
+	public ResponseEntity<String> readSuccessResponse(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		
+		logger.debug("Enter readFilesFromFolder");
+		System.out.println("Enter readFilesFromFolder");
+		StringBuilder fileListStr = new StringBuilder();
+		if(request.getParameter("filePath")!=null && !request.getParameter("filePath").isEmpty()) {
+			String filePath = "/home/virtuser/logs/outgoing/"+ request.getParameter("filePath");
+			System.out.println("File Path Parameter :" + filePath);
+			try{
+			ZipFile zipFile = new ZipFile(filePath);
+			Enumeration<? extends ZipEntry> entries = zipFile.entries();
+			int fileCnt = 0;
+			
+			while (entries.hasMoreElements()){
+				ZipEntry entry = entries.nextElement();
+				System.out.println("ZipEntry Name: " + entry.getName());
+				if(entry.getName().contains("/generated/")){
+					//File folder = new File(entry.toString());
+					//File[] listOfFiles = folder.listFiles();
+					System.out.println("ZipEntry Name in Generated loop: " + entry.getName());
+					String retrieveFileName = entry.getName().substring(entry.getName().lastIndexOf("/") + 1);
+					    	
+							fileCnt++;
+					    	StringBuilder strBldr = new StringBuilder();
+					    	strBldr.append("<tr>");
+					    	strBldr.append("<td>");
+					    	strBldr.append(fileCnt);
+					    	strBldr.append("</td>");
+					    	strBldr.append("<td>");
+					    	//strBldr.append("<a href='"+ filePath + "/" + entry.getName() + "'>" + retrieveFileName + "</a>");
+					    	strBldr.append("<a href='" + "/mas/mas-portal-servlets/getResponse/" + retrieveFileName + "' target='_blank' download='"+ retrieveFileName +"'>" + retrieveFileName + "</a>");
+					    	strBldr.append("</td>");
+					    	strBldr.append("</tr>");
+					        fileListStr.append(strBldr.toString());
+					
+				}
+			}
+			}catch (Exception e){;
+				System.out.println("Error: " +  e.getMessage());
+			}
+		}else {
+			fileListStr.append("Folder is empty");
+		}
+		System.out.println("fileListStr:: "+fileListStr.toString());	
+		logger.debug("fileListStr:: "+fileListStr.toString());
+		final HttpHeaders httpHeaders= new HttpHeaders();
+		logger.debug("Exit readFilesFromFolder");
+		System.out.println("Exit readFilesFromFolder");
+		response.setContentType("text/html; charset=utf-8");
+		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
+	}
+	
+	@RequestMapping(value = "/getResponse/{zip_name:.+}", method = RequestMethod.GET)
+	public void getZipInDownload(@PathVariable("zip_name") String fileName, HttpServletResponse response) {
+		// reads input file from an absolute path
+		
+		logger.debug("MasController.getFileDownload start");
+		logger.debug("fileName: " + fileName);
+		System.out.println("MasController.getFileDownload start");
+		System.out.println("fileName: " + fileName);
+		
+		String filePath = "/home/virtuser/logs/htmlfiles/" + fileName;
+		//String filePath = fileName;
+		
+		System.out.println("filePath: " + filePath);
+		File downloadFile = new File(filePath);
+		OutputStream outStream = null;
+		FileInputStream inStream = null;
+		System.out.println("going to try");
+		
+		try {
+			
+			inStream = new FileInputStream(downloadFile);
+			System.out.println("in Try");
+			
+			// if you want to use a relative path to context root:
+			String relativePath = context.getRealPath("");
+			logger.debug("relativePath = " + relativePath);
+			System.out.println("relativePath = " + relativePath);
+			
+			// gets MIME type of the file
+			String mimeType = context.getMimeType(filePath);
+			if (mimeType == null) {			
+				// set to binary type if MIME mapping not found
+				mimeType = "application/octet-stream";
+			}
+			logger.debug("MIME type: " + mimeType);
+			System.out.println("MIME type: " + mimeType);
+			
+			// modifies response
+			response.setContentType(mimeType);
+			response.setContentLength((int) downloadFile.length());
+			
+			// forces download
+			String headerKey = "Content-Disposition";
+			String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
+			response.setHeader(headerKey, headerValue);
+
+			// obtains response's output stream
+			outStream = response.getOutputStream();
+			
+			IOUtils.copy(inStream,outStream);	
+			logger.debug("MasController.getFileDownload end");
+			System.out.println("MasController.getFileDownload end");
+		} catch (IOException e) {
+			logger.error("exception in getFile:: " +e.getMessage());
+			System.out.println(e.getMessage());
+		}
+		finally {
+			try {
+				if (inStream != null) {
+					inStream.close();	
+				}
+				if (outStream != null) {
+					outStream.close();	
+				}		
+			} catch (IOException e) {
+			}
+		}
+	}
+	
 	@Override
 	public void setServletContext(ServletContext servletContext) {
 		// TODO Auto-generated method stub
@@ -413,7 +587,14 @@ public class MasController implements ServletContextAware {
 	public static String getEndDate() {
 	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");//dd/MM/yyyy
 	    Date now = new Date();
-	    String strDate = sdfDate.format(now);
+	    Calendar calendar = Calendar.getInstance();  
+        calendar.setTime(now);  
+
+        calendar.add(Calendar.MONTH, 1);  
+        calendar.set(Calendar.DAY_OF_MONTH, 1);  
+        calendar.add(Calendar.DATE, -1); 
+        Date lastDayOfMonth = calendar.getTime();
+	    String strDate = sdfDate.format(lastDayOfMonth);
 	    return strDate;
 	}
 	

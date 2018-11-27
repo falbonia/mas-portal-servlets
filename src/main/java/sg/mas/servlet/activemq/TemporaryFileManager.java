@@ -1,5 +1,7 @@
 package sg.mas.servlet.activemq;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -9,7 +11,11 @@ import java.nio.file.Path;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 import org.apache.log4j.Logger;
 
@@ -44,18 +50,9 @@ public class TemporaryFileManager {
     }
     // Store File
     String filename = _dateFormat.format(new Date()) + ".zip";
-    String name = _tempDirectory.toString() + "response" + filename;
-   // Path tempFile = Files.createTempFile(_tempDirectory.toAbsolutePath(), "reply", count.toString() + ".zip");
-    System.out.println(name);
+    // Path tempFile = Files.createTempFile(_tempDirectory.toAbsolutePath(), "reply", count.toString() + ".zip");
     Path tempFile = Files.createTempFile(_tempDirectory.toAbsolutePath(), "reply", filename);
-    try (FileOutputStream fos = new FileOutputStream(name)) {
-     	System.out.println("Path Defined is for fos : " + name);
-        fos.write(bytes, 0, bytes.length);
-    	fos.flush();
-        LOGGER.info("Message downloaded to " + tempFile.toString());
-        System.out.println("Message downloaded to " + tempFile.toString());
-        
-      }
+    
     try (OutputStream os = new FileOutputStream(tempFile.toFile())) {
     	System.out.println("Path Defined is : " + tempFile.toString());
       os.write(bytes, 0, bytes.length);
@@ -65,6 +62,20 @@ public class TemporaryFileManager {
     
     TemporaryFile temporaryFile = new TemporaryFile(tempFile.toFile(), filename);
     _files.put(count, temporaryFile);
+    try {
+    	String truncateName = "reply" + filename;
+    String getFormName = tempFile.toString().substring(tempFile.toString().lastIndexOf("reply"), tempFile.toString().lastIndexOf("."));
+         
+    String destPath = "/home/virtuser/logs/htmlfiles/" + getFormName + "/";
+    String zipPath = tempFile.toString();
+    //String zipPath = "/home/virtuser/logs/incoming/" + temporaryFile.getFilename();
+    System.out.println("Printing Destination Path: " + destPath);
+    System.out.println("Printing Zip Path: " + zipPath);
+    
+    unzip(zipPath,destPath);
+    } catch(Exception e){
+    	System.out.println("Unzip Error: " + e.getMessage());
+    }
     return temporaryFile;
   }
 
@@ -75,5 +86,44 @@ public class TemporaryFileManager {
     }
     return false;
   }
+  
+  private static void unzip(String zipFilePath, String destDir) {
+	  File dir = new File(destDir);
+      // create output directory if it doesn't exist
+      
+      if(!dir.exists()) dir.mkdirs();
+      FileInputStream fis;
+      //buffer for read and write data to file
+      byte[] buffer = new byte[1024];
+      try {
+          fis = new FileInputStream(zipFilePath);
+          ZipInputStream zis = new ZipInputStream(fis);
+          ZipEntry ze = zis.getNextEntry();
+          while(ze != null){
+              String fileName = ze.getName();
+              File newFile = new File(destDir + fileName);
+              System.out.println("Unzipping to "+newFile.getAbsolutePath());
+              //create directories for sub directories in zip
+              new File(newFile.getParent()).mkdirs();
+              FileOutputStream fos = new FileOutputStream(newFile);
+              int len;
+              while ((len = zis.read(buffer)) > 0) {
+              fos.write(buffer, 0, len);
+              }
+              fos.close();
+              //close this ZipEntry
+              zis.closeEntry();
+              ze = zis.getNextEntry();
+          }
+          //close last ZipEntry
+          zis.closeEntry();
+          zis.close();
+          fis.close();
+      } catch (IOException e) {
+          e.printStackTrace();
+      }
+      
+  }
+	
 
 }

@@ -84,11 +84,6 @@ public class IncomingQueue extends AbstractQueue implements MessageListener {
         byteMessage.readBytes(byteArray);
        
           final TemporaryFile temporaryFile = _fileManager.storeFile(byteArray);
-          //Writing to the direction two times.
-          String name = FileSystems.getDefault().getPath("/home/virtuser/logs/incoming/").toString();
-          name = name + temporaryFile.getFilename() + "response.zip";
-          FileOutputStream fileOS = new FileOutputStream(name);
-          fileOS.write(byteArray);
           
           Integer count = null;
           synchronized (_count) {
