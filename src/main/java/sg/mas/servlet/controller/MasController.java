@@ -174,8 +174,8 @@ public class MasController implements ServletContextAware {
 			logger.debug("Inside listenQueue get call");
 			System.out.println("Retrieving parameters....");
 			String getParameter = request.getParameter("id");
-			System.out.println(request.getParameter("id"));
-			Integer id = Integer.parseInt(request.getParameter("id"));
+			System.out.println(getParameter);
+			Integer id = Integer.parseInt(getParameter);
 			System.out.println("Integer has been parsed");
 			TemporaryFileManager fileManager = new TemporaryFileManager();
 			logger.debug("Establishing MessageConsumer to retrieve information");
