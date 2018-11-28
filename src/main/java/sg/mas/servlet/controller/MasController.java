@@ -44,8 +44,8 @@ import sg.mas.servlet.activemq.ReceivedMessage;
 import sg.mas.servlet.activemq.TemporaryFile;
 import sg.mas.servlet.activemq.TemporaryFileManager;
 import sg.mas.servlet.helper.MasHelper;
-import sg.mas.servlet.helper.ValidationResults;
 import sg.mas.servlet.helper.ValidationMessage;
+import sg.mas.servlet.helper.ValidationResults;
 
 @Controller
 public class MasController implements ServletContextAware {
@@ -53,14 +53,14 @@ public class MasController implements ServletContextAware {
 	final static Logger logger = Logger.getLogger(MasController.class);
 
 	@Autowired
-	private ServletContext context; 
-	
+	private ServletContext context;
+
 	@Autowired
 	private MasHelper masHelper;
-	
+
 	@RequestMapping(value="/uploadfiles",method = RequestMethod.POST, produces = "application/json")
-    public ResponseEntity<String> uploadMasFiles(HttpServletRequest request, HttpServletResponse response) throws Exception {
-                      
+    public ResponseEntity<String> uploadMasFiles(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
+
           HttpStatus status = null;
           String uploadFileMessage = "Empty Message";
           String UPLOADED_PATH = "/home/virtuser/logs/outgoing/";
@@ -74,10 +74,10 @@ public class MasController implements ServletContextAware {
                 // Parse the request
                 List<FileItem> items = upload.parseRequest(request);
                 logger.debug("Less than 11 items, going to start!");
-                
+
                 InputStream fileInputStream = null;
                 FileOutputStream fileOutputStream = null;
-                
+
                 logger.debug("Reading through FileItems");
                 try{
                 for(FileItem item : items){
@@ -93,9 +93,9 @@ public class MasController implements ServletContextAware {
                             IOUtils.copy(fileInputStream,fileOutputStream);
                             logger.debug("After saving to disk");
                             System.out.println("After saving to disk");
-                            
+
                             System.out.println("Before Sending to Queue");
-                            logger.debug("Before sending to Queue");                            
+                            logger.debug("Before sending to Queue");
                             // To send file to queue
                             String submissionID = getCurrentTimeStamp() + "000001";
                             String startDate = getStartDate();
@@ -115,7 +115,7 @@ public class MasController implements ServletContextAware {
                     		bytesMessage.writeBytes(item.get());
                     		outQueue.sendBytesMessageMessage(bytesMessage);
                     		logger.debug("After sending to the queue");
-                    		
+
                     		uploadFileMessage = "Successfully Uploaded";
                       }
                 }
@@ -123,28 +123,31 @@ public class MasController implements ServletContextAware {
                 	logger.error(e);
                 	uploadFileMessage = e.getMessage();
                 }
-                
+
                 if(items!=null && items.isEmpty()){
                       status = HttpStatus.BAD_REQUEST;
                 }else{
                       status = HttpStatus.OK;
-                }                 
-          }          
-          
+                }
+          }
+          else {
+            status = HttpStatus.BAD_REQUEST;
+          }
+
           final HttpHeaders httpHeaders= new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-          
-          return new ResponseEntity<String>(uploadFileMessage, httpHeaders, status);
+
+          return new ResponseEntity<>(uploadFileMessage, httpHeaders, status);
     }
 
-	
+
 	@RequestMapping(value="/getFiles",method = RequestMethod.GET, produces = "application/json")
-	public ResponseEntity<String> getMasFiles(HttpServletRequest request, HttpServletResponse response) throws Exception {
+	public ResponseEntity<String> getMasFiles(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
 		logger.debug("Inside getFiles");
 		final HttpHeaders httpHeaders= new HttpHeaders();
 		httpHeaders.setContentType(MediaType.APPLICATION_JSON);
 		System.out.println("Inside getFiles");
-		
+
 		OutgoingQueue outQueue = new OutgoingQueue( new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "INCOMING.SUBMISSION");
 		BytesMessage bytesMessage = outQueue.createNewBytesMessage();
 		bytesMessage.setStringProperty("submissionID", "1");
@@ -157,22 +160,22 @@ public class MasController implements ServletContextAware {
 		bytesMessage.setStringProperty("PeriodEndDate", "");
 		bytesMessage.setStringProperty("periodCode", "");
 		bytesMessage.writeBytes(null);
-		
+
 		outQueue.sendBytesMessageMessage(bytesMessage);
-		
+
 		logger.debug("Exit getFiles");
-		return new ResponseEntity<String>("success", httpHeaders, HttpStatus.OK);
+		return new ResponseEntity<>("success", httpHeaders, HttpStatus.OK);
 	}
 
 	@RequestMapping(value="/listenQueue",method = RequestMethod.GET, produces = "application/json")
-	public ResponseEntity<String> getCoreFilingStatus(HttpServletRequest request, HttpServletResponse response) throws Exception {
+	public ResponseEntity<String> getCoreFilingStatus(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
 		System.out.println("Inside listenQueue get call");
-		try{		
+		try{
 			logger.debug("Inside listenQueue get call");
 			System.out.println("Retrieving parameters....");
 			String getParameter = request.getParameter("id");
 			System.out.println(request.getParameter("id"));
-			Integer id = Integer.parseInt(request.getParameter("id")); 
+			Integer id = Integer.parseInt(request.getParameter("id"));
 			System.out.println("Integer has been parsed");
 			TemporaryFileManager fileManager = new TemporaryFileManager();
 			logger.debug("Establishing MessageConsumer to retrieve information");
@@ -180,14 +183,14 @@ public class MasController implements ServletContextAware {
 			IncomingQueue inQueue = new IncomingQueue(id, new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "ACCENTURE.OUTGOING.RESPONSE", fileManager);
 			System.out.println("MessageConsumer is created and listening");
 			logger.debug("MessageConsumer is created and listening");
-					
+
 			if (inQueue.hasReceivedMessage(id)){
 				System.out.println("This Message ID: " + id + " has been received");
 				logger.debug("This Message ID: " + id + " has been received");
 				ReceivedMessage receive = inQueue.getReceivedMessage(id);
 				TemporaryFile receivedFile = receive.getFile();
 				System.out.println("Received File Name: " + receivedFile.getFilename());
-				
+
 				// Do something with the ReceivedMessage to check or update
 			}
 		}catch(Exception e){
@@ -199,18 +202,18 @@ public class MasController implements ServletContextAware {
 		httpHeaders.setContentType(MediaType.APPLICATION_JSON);
 		logger.debug("Exit listenQueue");
 		System.out.println("Exit listenQueue");
-		return new ResponseEntity<String>("success", httpHeaders, HttpStatus.OK);
+		return new ResponseEntity<>("success", httpHeaders, HttpStatus.OK);
 	}
-	
-	
+
+
 	@RequestMapping(value="/readFilesFromFolder",method = RequestMethod.GET, produces = "application/xhtml+xml")
-	public ResponseEntity<String> readFilesFromFolder(HttpServletRequest request, HttpServletResponse response) throws Exception {
+	public ResponseEntity<String> readFilesFromFolder(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
 		logger.debug("Enter readFilesFromFolder");
 		System.out.println("Enter readFilesFromFolder");
 		StringBuilder fileListStr = new StringBuilder();
 		if(request.getParameter("filePath")!=null && !request.getParameter("filePath").isEmpty()) {
 			String filePath = request.getParameter("filePath");
-			
+
 			File folder = new File(filePath);
 			File[] listOfFiles = folder.listFiles();
 			int fileCnt = 0;
@@ -227,14 +230,14 @@ public class MasController implements ServletContextAware {
 			    		strBldr.append("<a href='"+ "/mas/mas-portal-servlets/outfiles/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	} else{
 			    	   	strBldr.append("<a href='"+ "/mas/mas-portal-servlets/infiles/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
-			    	}		
+			    	}
 			    	//strBldr.append("<a href='"+ "/mas/mas-portal-servlets/files/"+file.getName() + "' target='_blank' download='"+ file.getName() +"'>" + file.getName() + "</a>");
 			    	strBldr.append("</td>");
 			    	String getFormName = file.getName().substring(0, file.getName().lastIndexOf("."));
 			        File dir = new File("/home/virtuser/logs/htmlfiles/" + getFormName + "/results/TNValidationResult/" );
 			    	File[] directoryListing = dir.listFiles();
 			    	System.out.println("Before looping Through");
-			    	
+
 			    	boolean isApproved = true;
 			    	if (directoryListing != null){
 			    		System.out.println("Found Directory!");
@@ -246,7 +249,7 @@ public class MasController implements ServletContextAware {
 				    	        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
 				    	        ValidationResults validationResults = (ValidationResults) unmarshaller.unmarshal(file);
 				    	        List<ValidationMessage> validationMessages = validationResults.getValidationMessages();
-				    	        
+
 				    	        for (ValidationMessage validMessage : validationMessages){
 				    	        	if (validMessage.getSeverity() != "OK"){
 				    	        		isApproved = false;
@@ -256,17 +259,17 @@ public class MasController implements ServletContextAware {
 				    	        	String[] messageCauses = validMessage.getMessageCauses();
 				    	        	for (String messageCause : messageCauses){
 				    	        		System.out.println("messageCause: " + messageCause);
-				    	        	}		    	        	
+				    	        	}
 				    	        }
 				    	        //TODO parse XML - reads xml and gives out the HTML
 				    	   	}
 			    		}
 			    	}
-			    	
-			    	
-			    	strBldr.append("<td>");			    	
-			    	SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");			    	
-		    		Date lastModifiedDate=new Date(file.lastModified());			    		
+
+
+			    	strBldr.append("<td>");
+			    	SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
+		    		Date lastModifiedDate=new Date(file.lastModified());
 					strBldr.append(format.format(lastModifiedDate));
 			    	strBldr.append("</td>");
 			    	/*if(filePath.indexOf("incoming")<0) {
@@ -287,7 +290,7 @@ public class MasController implements ServletContextAware {
 				    	strBldr.append("Error");
 				    	strBldr.append("</font></td>");
 			    	}
-			    	
+
 			    	strBldr.append("</tr>");
 			        fileListStr.append(strBldr.toString());
 			    }
@@ -295,56 +298,56 @@ public class MasController implements ServletContextAware {
 		}else {
 			fileListStr.append("Folder is empty");
 		}
-		//System.out.println("fileListStr:: "+fileListStr.toString());	
+		//System.out.println("fileListStr:: "+fileListStr.toString());
 		logger.debug("fileListStr:: "+fileListStr.toString());
 		final HttpHeaders httpHeaders= new HttpHeaders();
 		logger.debug("Exit readFilesFromFolder");
 		System.out.println("Exit readFilesFromFolder");
 		response.setContentType("text/html; charset=utf-8");
-		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
+		return new ResponseEntity<>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
 	}
-	
+
 	@RequestMapping(value = "/outfiles/{file_name:.+}", method = RequestMethod.GET)
-	public void getFileDownload(@PathVariable("file_name") String fileName, HttpServletResponse response) {
+	public void getFileDownload(@PathVariable("file_name") final String fileName, final HttpServletResponse response) {
 		// reads input file from an absolute path
-		
+
 		logger.debug("MasController.getFileDownload start");
 		logger.debug("fileName: " + fileName);
 		System.out.println("MasController.getFileDownload start");
 		System.out.println("fileName: " + fileName);
-		
+
 		String filePath = "/home/virtuser/logs/outgoing/" + fileName;
 		//String filePath = fileName;
-		
+
 		System.out.println("filePath: " + filePath);
 		File downloadFile = new File(filePath);
 		OutputStream outStream = null;
 		FileInputStream inStream = null;
 		System.out.println("going to try");
-		
+
 		try {
-			
+
 			inStream = new FileInputStream(downloadFile);
 			System.out.println("in Try");
-			
+
 			// if you want to use a relative path to context root:
 			String relativePath = context.getRealPath("");
 			logger.debug("relativePath = " + relativePath);
 			System.out.println("relativePath = " + relativePath);
-			
+
 			// gets MIME type of the file
 			String mimeType = context.getMimeType(filePath);
-			if (mimeType == null) {			
+			if (mimeType == null) {
 				// set to binary type if MIME mapping not found
 				mimeType = "application/octet-stream";
 			}
 			logger.debug("MIME type: " + mimeType);
 			System.out.println("MIME type: " + mimeType);
-			
+
 			// modifies response
 			response.setContentType(mimeType);
 			response.setContentLength((int) downloadFile.length());
-			
+
 			// forces download
 			String headerKey = "Content-Disposition";
 			String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
@@ -352,8 +355,8 @@ public class MasController implements ServletContextAware {
 
 			// obtains response's output stream
 			outStream = response.getOutputStream();
-			
-			IOUtils.copy(inStream,outStream);	
+
+			IOUtils.copy(inStream,outStream);
 			logger.debug("MasController.getFileDownload end");
 			System.out.println("MasController.getFileDownload end");
 		} catch (IOException e) {
@@ -363,57 +366,57 @@ public class MasController implements ServletContextAware {
 		finally {
 			try {
 				if (inStream != null) {
-					inStream.close();	
+					inStream.close();
 				}
 				if (outStream != null) {
-					outStream.close();	
-				}		
+					outStream.close();
+				}
 			} catch (IOException e) {
 			}
 		}
 	}
-	
+
 	@RequestMapping(value = "/infiles/{file_name:.+}", method = RequestMethod.GET)
-	public void getFileInDownload(@PathVariable("file_name") String fileName, HttpServletResponse response) {
+	public void getFileInDownload(@PathVariable("file_name") final String fileName, final HttpServletResponse response) {
 		// reads input file from an absolute path
-		
+
 		logger.debug("MasController.getFileDownload start");
 		logger.debug("fileName: " + fileName);
 		System.out.println("MasController.getFileDownload start");
 		System.out.println("fileName: " + fileName);
-		
+
 		String filePath = "/home/virtuser/logs/incoming/" + fileName;
 		//String filePath = fileName;
-		
+
 		System.out.println("filePath: " + filePath);
 		File downloadFile = new File(filePath);
 		OutputStream outStream = null;
 		FileInputStream inStream = null;
 		System.out.println("going to try");
-		
+
 		try {
-			
+
 			inStream = new FileInputStream(downloadFile);
 			System.out.println("in Try");
-			
+
 			// if you want to use a relative path to context root:
 			String relativePath = context.getRealPath("");
 			logger.debug("relativePath = " + relativePath);
 			System.out.println("relativePath = " + relativePath);
-			
+
 			// gets MIME type of the file
 			String mimeType = context.getMimeType(filePath);
-			if (mimeType == null) {			
+			if (mimeType == null) {
 				// set to binary type if MIME mapping not found
 				mimeType = "application/octet-stream";
 			}
 			logger.debug("MIME type: " + mimeType);
 			System.out.println("MIME type: " + mimeType);
-			
+
 			// modifies response
 			response.setContentType(mimeType);
 			response.setContentLength((int) downloadFile.length());
-			
+
 			// forces download
 			String headerKey = "Content-Disposition";
 			String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
@@ -421,8 +424,8 @@ public class MasController implements ServletContextAware {
 
 			// obtains response's output stream
 			outStream = response.getOutputStream();
-			
-			IOUtils.copy(inStream,outStream);	
+
+			IOUtils.copy(inStream,outStream);
 			logger.debug("MasController.getFileDownload end");
 			System.out.println("MasController.getFileDownload end");
 		} catch (IOException e) {
@@ -432,19 +435,19 @@ public class MasController implements ServletContextAware {
 		finally {
 			try {
 				if (inStream != null) {
-					inStream.close();	
+					inStream.close();
 				}
 				if (outStream != null) {
-					outStream.close();	
-				}		
+					outStream.close();
+				}
 			} catch (IOException e) {
 			}
 		}
 	}
-	
+
 	@RequestMapping(value="/readSuccessResponse",method = RequestMethod.GET, produces = "application/xhtml+xml")
-	public ResponseEntity<String> readSuccessResponse(HttpServletRequest request, HttpServletResponse response) throws Exception {
-		
+	public ResponseEntity<String> readSuccessResponse(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
+
 		logger.debug("Enter readFilesFromFolder");
 		System.out.println("Enter readFilesFromFolder");
 		StringBuilder fileListStr = new StringBuilder();
@@ -455,7 +458,7 @@ public class MasController implements ServletContextAware {
 			ZipFile zipFile = new ZipFile(filePath);
 			Enumeration<? extends ZipEntry> entries = zipFile.entries();
 			int fileCnt = 0;
-			
+
 			while (entries.hasMoreElements()){
 				ZipEntry entry = entries.nextElement();
 				System.out.println("ZipEntry Name: " + entry.getName());
@@ -464,7 +467,7 @@ public class MasController implements ServletContextAware {
 					//File[] listOfFiles = folder.listFiles();
 					System.out.println("ZipEntry Name in Generated loop: " + entry.getName());
 					String retrieveFileName = entry.getName().substring(entry.getName().lastIndexOf("/") + 1);
-					    	
+
 							fileCnt++;
 					    	StringBuilder strBldr = new StringBuilder();
 					    	strBldr.append("<tr>");
@@ -477,7 +480,7 @@ public class MasController implements ServletContextAware {
 					    	strBldr.append("</td>");
 					    	strBldr.append("</tr>");
 					        fileListStr.append(strBldr.toString());
-					
+
 				}
 			}
 			}catch (Exception e){;
@@ -486,56 +489,56 @@ public class MasController implements ServletContextAware {
 		}else {
 			fileListStr.append("Folder is empty");
 		}
-		System.out.println("fileListStr:: "+fileListStr.toString());	
+		System.out.println("fileListStr:: "+fileListStr.toString());
 		logger.debug("fileListStr:: "+fileListStr.toString());
 		final HttpHeaders httpHeaders= new HttpHeaders();
 		logger.debug("Exit readFilesFromFolder");
 		System.out.println("Exit readFilesFromFolder");
 		response.setContentType("text/html; charset=utf-8");
-		return new ResponseEntity<String>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
+		return new ResponseEntity<>(fileListStr.toString(), httpHeaders, HttpStatus.OK);
 	}
-	
+
 	@RequestMapping(value = "/getResponse/{zip_name:.+}", method = RequestMethod.GET)
-	public void getZipInDownload(@PathVariable("zip_name") String fileName, HttpServletResponse response) {
+	public void getZipInDownload(@PathVariable("zip_name") final String fileName, final HttpServletResponse response) {
 		// reads input file from an absolute path
-		
+
 		logger.debug("MasController.getFileDownload start");
 		logger.debug("fileName: " + fileName);
 		System.out.println("MasController.getFileDownload start");
 		System.out.println("fileName: " + fileName);
-		
+
 		String filePath = "/home/virtuser/logs/htmlfiles/" + fileName;
 		//String filePath = fileName;
-		
+
 		System.out.println("filePath: " + filePath);
 		File downloadFile = new File(filePath);
 		OutputStream outStream = null;
 		FileInputStream inStream = null;
 		System.out.println("going to try");
-		
+
 		try {
-			
+
 			inStream = new FileInputStream(downloadFile);
 			System.out.println("in Try");
-			
+
 			// if you want to use a relative path to context root:
 			String relativePath = context.getRealPath("");
 			logger.debug("relativePath = " + relativePath);
 			System.out.println("relativePath = " + relativePath);
-			
+
 			// gets MIME type of the file
 			String mimeType = context.getMimeType(filePath);
-			if (mimeType == null) {			
+			if (mimeType == null) {
 				// set to binary type if MIME mapping not found
 				mimeType = "application/octet-stream";
 			}
 			logger.debug("MIME type: " + mimeType);
 			System.out.println("MIME type: " + mimeType);
-			
+
 			// modifies response
 			response.setContentType(mimeType);
 			response.setContentLength((int) downloadFile.length());
-			
+
 			// forces download
 			String headerKey = "Content-Disposition";
 			String headerValue = String.format("attachment; filename=\"%s\"", downloadFile.getName());
@@ -543,8 +546,8 @@ public class MasController implements ServletContextAware {
 
 			// obtains response's output stream
 			outStream = response.getOutputStream();
-			
-			IOUtils.copy(inStream,outStream);	
+
+			IOUtils.copy(inStream,outStream);
 			logger.debug("MasController.getFileDownload end");
 			System.out.println("MasController.getFileDownload end");
 		} catch (IOException e) {
@@ -554,51 +557,51 @@ public class MasController implements ServletContextAware {
 		finally {
 			try {
 				if (inStream != null) {
-					inStream.close();	
+					inStream.close();
 				}
 				if (outStream != null) {
-					outStream.close();	
-				}		
+					outStream.close();
+				}
 			} catch (IOException e) {
 			}
 		}
 	}
-	
+
 	@Override
-	public void setServletContext(ServletContext servletContext) {
+	public void setServletContext(final ServletContext servletContext) {
 		// TODO Auto-generated method stub
-		
+
 	}
-	
+
 	public static String getCurrentTimeStamp() {
 	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyyMMddHHmmss");//dd/MM/yyyy
 	    Date now = new Date();
 	    String strDate = sdfDate.format(now);
 	    return strDate;
 	}
-	
+
 	public static String getStartDate() {
 	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");//dd/MM/yyyy
 	    Date now = new Date();
 	    String strDate = sdfDate.format(now);
 	    return strDate;
 	}
-	
+
 	public static String getEndDate() {
 	    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");//dd/MM/yyyy
 	    Date now = new Date();
-	    Calendar calendar = Calendar.getInstance();  
-        calendar.setTime(now);  
+	    Calendar calendar = Calendar.getInstance();
+        calendar.setTime(now);
 
-        calendar.add(Calendar.MONTH, 1);  
-        calendar.set(Calendar.DAY_OF_MONTH, 1);  
-        calendar.add(Calendar.DATE, -1); 
+        calendar.add(Calendar.MONTH, 1);
+        calendar.set(Calendar.DAY_OF_MONTH, 1);
+        calendar.add(Calendar.DATE, -1);
         Date lastDayOfMonth = calendar.getTime();
 	    String strDate = sdfDate.format(lastDayOfMonth);
 	    return strDate;
 	}
-	
-	
-	
-	
+
+
+
+
 }
