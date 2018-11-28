@@ -4,7 +4,7 @@
 	debug="false">
 		
 	<appender name="mas-portal-servlet-log-file" class="org.apache.log4j.DailyRollingFileAppender">
-		<param name="File" value="/home/virtuser/logs/mas-portal-servlets.log">
+		<param name="File" value="/home/virtuser/logs/mas-portal-servlets.log"/>
 		<param name="DatePattern" value="'.'dd-MM-yyyy" />
 		<param name="MaxBackupIndex" value="30" />		
 		<layout class="org.apache.log4j.PatternLayout">
