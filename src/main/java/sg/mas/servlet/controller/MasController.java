@@ -23,8 +23,7 @@ import javax.jms.JMSException;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Unmarshaller;
+import javax.xml.transform.stream.StreamSource;
 
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -47,8 +46,12 @@ import sg.mas.servlet.activemq.OutgoingQueue;
 import sg.mas.servlet.activemq.ReceivedMessage;
 import sg.mas.servlet.activemq.TemporaryFile;
 import sg.mas.servlet.activemq.TemporaryFileManager;
-import sg.mas.servlet.helper.ValidationMessage;
-import sg.mas.servlet.helper.ValidationResults;
+import sg.mas.servlet.validation.messages.Annotation;
+import sg.mas.servlet.validation.messages.MessageCause;
+import sg.mas.servlet.validation.messages.Severity;
+import sg.mas.servlet.validation.messages.ValidationMessage;
+import sg.mas.servlet.validation.messages.ValidationMessageCollection;
+import sg.mas.servlet.validation.reader.EnvelopedValidationMessageXMLReader;
 
 @Controller
 public class MasController implements ServletContextAware {
@@ -253,24 +256,29 @@ public class MasController implements ServletContextAware {
 				    	for(File childFile : directoryListing){
 			    			if(childFile.getName().contains(".xml")){
 					    		System.out.println("Found XML!!");
-					    		// ERROR OCCURS AT THIS PORTION.
-				    	   		JAXBContext jaxbContext = JAXBContext.newInstance(ValidationResults.class);
-				    	        Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-				    	        ValidationResults validationResults = (ValidationResults) unmarshaller.unmarshal(file);
-				    	        List<ValidationMessage> validationMessages = validationResults.getValidationMessages();
-
-				    	        for (ValidationMessage validMessage : validationMessages){
-				    	        	if (validMessage.getSeverity() != "OK"){
+					    		final ValidationMessageCollection result = new EnvelopedValidationMessageXMLReader().fromXML(new StreamSource(new FileInputStream(file)));
+				    	        for (ValidationMessage validMessage : result){
+				    	        	if (validMessage.getSeverity() != Severity.OK && validMessage.getSeverity() != Severity.WARNING){
 				    	        		isApproved = false;
 				    	        	}
 				    	        	System.out.println("messageDetail: " + validMessage.getMessageDetail());
+				    	        	System.out.println("severity: " + validMessage.getSeverity());
 				    	        	System.out.println("errorCode: " + validMessage.getErrorCode());
-				    	        	String[] messageCauses = validMessage.getMessageCauses();
-				    	        	for (String messageCause : messageCauses){
-				    	        		System.out.println("messageCause: " + messageCause);
-				    	        	}
+				    	        	for (final MessageCause messageCause : validMessage.getCauses()) {
+				    	            System.out.println("  cause: " + messageCause.getName() + " - " + messageCause.getLocation());
+				    	            for (final Annotation annotation : messageCause.getAnnotations()) {
+				    	              if (annotation.getName().getLocalPart().equals("tableLocation")) {
+				    	                System.out.println("  * Location in form: " + annotation.getValue());
+				    	              }
+				    	              else if (annotation.getName().getLocalPart().equals("originalInstance")) {
+				    	                System.out.println("  * Submission ID: " + annotation.getValue());
+				    	              }
+				    	              else {
+				    	                System.out.println("  * " + annotation.getName() + " " + annotation.getValue());
+				    	              }
+				    	            }
+				    	          }
 				    	        }
-				    	        //TODO parse XML - reads xml and gives out the HTML
 				    	   	}
 			    		}
 			    	}
