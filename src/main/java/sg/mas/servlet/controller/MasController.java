@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -15,7 +16,10 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.jms.BytesMessage;
+import javax.jms.JMSException;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -43,7 +47,6 @@ import sg.mas.servlet.activemq.OutgoingQueue;
 import sg.mas.servlet.activemq.ReceivedMessage;
 import sg.mas.servlet.activemq.TemporaryFile;
 import sg.mas.servlet.activemq.TemporaryFileManager;
-import sg.mas.servlet.helper.MasHelper;
 import sg.mas.servlet.helper.ValidationMessage;
 import sg.mas.servlet.helper.ValidationResults;
 
@@ -55,8 +58,21 @@ public class MasController implements ServletContextAware {
 	@Autowired
 	private ServletContext context;
 
-	@Autowired
-	private MasHelper masHelper;
+	private IncomingQueue _incomingQueue;
+
+	@PostConstruct
+	public void startQueue() throws JMSException, URISyntaxException, IOException {
+	  logger.debug("Establishing MessageConsumer to retrieve information");
+    System.out.println("Establishing MessageConsumer to retrieve information");
+    _incomingQueue = new IncomingQueue(1, new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "ACCENTURE.OUTGOING.RESPONSE", new TemporaryFileManager());
+    System.out.println("MessageConsumer is created and listening");
+    logger.debug("MessageConsumer is created and listening");
+  }
+
+	@PreDestroy
+	public void stopQueue() throws JMSException {
+	  _incomingQueue.destroy();
+	}
 
 	@RequestMapping(value="/uploadfiles",method = RequestMethod.POST, produces = "application/json")
     public ResponseEntity<String> uploadMasFiles(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
@@ -177,17 +193,10 @@ public class MasController implements ServletContextAware {
 			System.out.println(getParameter);
 			Integer id = Integer.parseInt(getParameter);
 			System.out.println("Integer has been parsed");
-			TemporaryFileManager fileManager = new TemporaryFileManager();
-			logger.debug("Establishing MessageConsumer to retrieve information");
-			System.out.println("Establishing MessageConsumer to retrieve information");
-			IncomingQueue inQueue = new IncomingQueue(id, new URI("tcp://activemq.tnisp-demo.sg.cfl.io:61616"), "ACCENTURE.OUTGOING.RESPONSE", fileManager);
-			System.out.println("MessageConsumer is created and listening");
-			logger.debug("MessageConsumer is created and listening");
-
-			if (inQueue.hasReceivedMessage(id)){
+			if (_incomingQueue.hasReceivedMessage(id)){
 				System.out.println("This Message ID: " + id + " has been received");
 				logger.debug("This Message ID: " + id + " has been received");
-				ReceivedMessage receive = inQueue.getReceivedMessage(id);
+				ReceivedMessage receive = _incomingQueue.getReceivedMessage(id);
 				TemporaryFile receivedFile = receive.getFile();
 				System.out.println("Received File Name: " + receivedFile.getFilename());
 
