@@ -463,8 +463,7 @@ public class MasController implements ServletContextAware {
 		if(request.getParameter("filePath")!=null && !request.getParameter("filePath").isEmpty()) {
 			String filePath = "/home/virtuser/logs/outgoing/"+ request.getParameter("filePath");
 			System.out.println("File Path Parameter :" + filePath);
-			try{
-			ZipFile zipFile = new ZipFile(filePath);
+			try (final ZipFile zipFile = new ZipFile(filePath)) {
 			Enumeration<? extends ZipEntry> entries = zipFile.entries();
 			int fileCnt = 0;
 
